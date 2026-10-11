@@ -1,0 +1,47 @@
+# ============ 本地密钥（禁止提交）============
+# 仓库里提交的是脱敏版 conf/app_config.yaml；真实密钥写在 app_config.local.yaml
+conf/*.local.yaml
+.env
+.env.local
+.env.*.local
+
+# ============ 虚拟环境 ============
+.venv/
+venv/
+env/
+
+# ============ Python ============
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ============ 前端（frontend/）============
+# frontend/.gitignore 已经覆盖这些，这里再写一遍是防止目录被挪动后误提交
+node_modules/
+.vite/
+*.local
+
+# ============ 运行时产物 ============
+logs/
+*.log
+
+# ============ IDE / 编辑器 ============
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ============ 系统 ============
+.DS_Store
+Thumbs.db
+desktop.ini

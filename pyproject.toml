@@ -1,0 +1,47 @@
+[project]
+name = "mingshu"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "asyncmy>=0.2.11",
+    "cryptography>=46.0.4",
+    "elasticsearch[async]>=8,<9",
+    "fastapi[standard]>=0.128.0",
+    "huggingface-hub>=0.36.0",
+    "jieba>=0.42.1",
+    "langchain>=1.2.7",
+    "langchain-deepseek>=1.0.1",
+    "langchain-huggingface>=1.2.0",
+    "langchain-openai>=1.1.10",
+    "langgraph>=1.0.7",
+    "loguru>=0.7.3",
+    "omegaconf>=2.3.0",
+    "pyyaml>=6.0.3",
+    "qdrant-client>=1.16.2",
+    "sqlalchemy>=2.0.46",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.17.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+exclude = [".venv"]
+# frontend/ 是纯 JS/Vue 工程（里面有 node_modules），ruff 没必要进去遍历
+extend-exclude = ["frontend"]
+
+[tool.ruff.lint]
+# 只开「真正是问题」的规则（pyflakes：未使用导入/变量、未定义名字 + 语法错误），
+# 不引入风格类规则，避免一次性产生大量无意义改动；要收紧再逐步加 E/W/I/UP/SIM。
+select = ["F", "E9"]
+
+[tool.pytest.ini_options]
+testpaths = ["checks"]
+# 项目本身没有打成包安装，pytest 默认只把 checks/ 加进 sys.path，
+# 这里显式把仓库根目录加进去，`import app.xxx` 才能工作
+pythonpath = ["."]
+addopts = "-q"

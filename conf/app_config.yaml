@@ -1,0 +1,90 @@
+# 明数（MingShu）配置（脱敏版，可以安全提交到仓库）
+#
+# 真实凭据有两种注入方式，任选其一：
+#   1) conf/app_config.local.yaml —— 本地覆盖文件，已被 .gitignore 排除（推荐，最省事）
+#   2) 环境变量 —— 下面写成 ${oc.env:变量名,默认值} 的字段都支持
+# 加载顺序：本文件 → app_config.local.yaml → 环境变量已在此解析
+
+logging:
+  file:
+    enable: true
+    level: INFO
+    path: logs
+    rotation: "10 MB"
+    retention: "7 days"
+  console:
+    enable: true
+    level: INFO
+
+db_meta:
+  host: ${oc.env:DA_META_HOST,localhost}
+  port: 3306
+  # 元数据库需要写权限：元知识构建脚本要往 meta 写表 / 字段 / 指标
+  user: ${oc.env:DA_META_USER,mingshu}
+  password: ${oc.env:DA_META_PASSWORD,""}
+  database: meta
+
+db_dw:
+  host: ${oc.env:DA_DW_HOST,localhost}
+  port: 3306
+  # 必须是只读账号：LLM 生成的 SQL 由它执行，数据库层面就写不进去。
+  # 建号语句见 README「SQL 安全」，docker/mysql/00_init_users.sh 会自动创建。
+  user: ${oc.env:DA_DW_USER,da_readonly}
+  password: ${oc.env:DA_DW_PASSWORD,""}
+  database: dw
+
+qdrant:
+  host: ${oc.env:DA_QDRANT_HOST,localhost}
+  port: 6333
+  # 必须与向量模型输出维度一致；启动自检会校验（不一致会在 /ready 里报出来）
+  embedding_size: 1024
+
+embedding:
+  host: ${oc.env:DA_EMBEDDING_HOST,localhost}
+  port: 8081
+  model: BAAI/bge-large-zh-v1.5
+  # 单次向量化调用的超时（秒）；不设会用到 SDK 默认的 600 秒
+  timeout_seconds: 30
+
+es:
+  host: ${oc.env:DA_ES_HOST,localhost}
+  port: 9200
+  # 索引名以这里为准（元知识构建脚本按此创建索引）
+  index_name: value_index
+
+llm:
+  model_name: ${oc.env:DA_LLM_MODEL,qwen3.8-flash}
+  api_key: ${oc.env:DA_LLM_API_KEY,""}
+  base_url: ${oc.env:DA_LLM_BASE_URL,https://dashscope.aliyuncs.com/compatible-mode/v1}
+  # 单次模型调用的超时（秒）与重试次数；超时也会触发重试，所以最坏耗时是
+  # 45 × (1+2) + 退避 ≈ 140 秒，小于下面 query.request_timeout_seconds 的整体超时，
+  # 这样挂住时先报「模型超时」而不是笼统的「查询超时」
+  timeout_seconds: 45
+  max_retries: 2
+
+# 查询侧的安全与资源限制
+query:
+  # 单次查询最多返回多少行（0 = 不限制）
+  row_limit: 1000
+  # 单条 SQL 在数据库端的执行时间上限（毫秒，只对只读 SELECT 生效）
+  sql_timeout_ms: 30000
+  # 一次问答的整体超时（秒），0 = 不限制
+  request_timeout_seconds: 180
+
+# 智能体流程
+agent:
+  # SQL 校验失败后最多自动校正几次（每次校正 = 一次大模型调用）
+  # 校正后会重新校验，次数用完仍不通过则直接报错，不会把没通过校验的 SQL 发到数仓
+  max_sql_corrections: 2
+
+# 对外接口
+api:
+  # 接口鉴权：留空 = 不校验（本地开发）；填了之后 POST /api/query 必须带请求头 X-API-Key
+  # 前端对应 VITE_API_KEY（见 frontend/.env.example）；/health 与 /ready 始终不鉴权
+  api_key: ${oc.env:DA_API_KEY,""}
+  # 允许跨域的来源列表；留空 = 不启用 CORS（开发时前端走 Vite 代理，用不到 CORS）
+  # 例：cors_origins: ["http://localhost:5173", "https://your-domain.example"]
+  cors_origins: []
+  # /ready 里「向量服务」这一项的缓存秒数（它会真的发一次向量化请求）
+  # 0 = 每次都真调；健康检查频繁时应保留缓存
+  ready_cache_seconds: 60

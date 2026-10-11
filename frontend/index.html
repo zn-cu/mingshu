@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="明数 MingShu · 用自然语言查询数据仓库"/>
+  <meta name="theme-color" content="#4f6ef7"/>
+  <title>明数 MingShu · 数据智能问答</title>
+  <script>
+    // 首屏前确定主题，避免闪白/闪黑
+    (function () {
+      try {
+        var mode = localStorage.getItem('mingshu.theme') || 'auto'
+        var dark = mode === 'dark' ||
+          (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+        document.documentElement.dataset.themeMode = mode
+      } catch (e) {
+        document.documentElement.dataset.theme = 'light'
+        document.documentElement.dataset.themeMode = 'auto'
+      }
+    })()
+  </script>
+</head>
+<body>
+<div id="app"></div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

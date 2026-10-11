@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: 安装依赖（含 dev）
+        run: uv sync --frozen
+
+      - name: Lint（ruff）
+        run: uv run ruff check .
+
+      - name: 单元测试（不需要外部依赖）
+        run: uv run pytest
+
+      # 集成测试需要 MySQL / Qdrant / ES / 向量服务，CI 里不启动；
+      # 本地可用 DA_RUN_INTEGRATION=1 运行：
+      #   DA_RUN_INTEGRATION=1 uv run pytest checks/integration -v

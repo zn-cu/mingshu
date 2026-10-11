@@ -1,0 +1,91 @@
+# 明数（MingShu）—— 本地开发环境
+#
+# 用法：
+#   1) cp .env.example .env   并填入自己的密码（.env 已被 .gitignore 排除，不会提交）
+#   2) 下载 Embedding 模型权重到 embedding/bge-large-zh-v1.5/（下载方式见仓库根目录 README 的「注意事项」）
+#   3) docker compose up -d
+#
+# 说明：
+#   - 项目名固定为 mingshu，容器名 / 卷名 / 网络名都基于它
+#   - MySQL 初始化脚本只在「数据卷为空」时执行一次；已有数据卷的环境需手动执行同样的 SQL
+#   - 若你是从旧环境迁移、想复用已有的数据卷，把下面 volumes 改成：
+#       mysql_data:
+#         external: true
+#         name: <你已有的实际卷名>
+
+name: mingshu
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 docker/.env 中设置}
+      MYSQL_USER: ${MYSQL_USER:-mingshu}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 docker/.env 中设置}
+      # 以下两个变量供 mysql/00_init_users.sh 使用：创建数仓只读账号
+      DA_READONLY_USER: ${DA_READONLY_USER:-da_readonly}
+      DA_READONLY_PASSWORD: ${DA_READONLY_PASSWORD:?请在 docker/.env 中设置}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql:/docker-entrypoint-initdb.d
+    command:
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+
+  elasticsearch:
+    build: ./elasticsearch
+    container_name: elasticsearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: kibana:8.19.10
+    container_name: kibana
+    restart: unless-stopped
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  qdrant:
+    image: qdrant/qdrant:v1.16
+    container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # HTTP
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  embedding:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+    container_name: embedding
+    restart: unless-stopped
+    ports:
+      - "8081:80"     # 容器内是 80，映射到宿主机 8081
+    environment:
+      MODEL_ID: /models/bge-large-zh-v1.5
+      MAX_CONCURRENT_REQUESTS: "16"
+      MAX_BATCH_TOKENS: "16384"
+    volumes:
+      # 模型权重不随仓库分发，需自行下载到该目录（下载方式见仓库根目录 README 的「注意事项」）；
+      # 也可以删掉这行，让 TEI 启动时自己下载
+      - ./embedding/bge-large-zh-v1.5:/models/bge-large-zh-v1.5
+
+volumes:
+  mysql_data:
+  es_data:
+  qdrant_data:
